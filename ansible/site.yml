@@ -1,0 +1,20 @@
+---
+- name: "ÉTAPE 1 — Config système + cloud-init (tous les nœuds)"
+  hosts: k8s
+  become: yes
+  roles:
+    - common
+    - containerd
+    - kubernetes
+
+- name: "ÉTAPE 2 — Master : init + Calico + Ingress + app"
+  hosts: master
+  become: yes
+  roles:
+    - master
+
+- name: "ÉTAPE 3 — Workers : rejoindre le cluster"
+  hosts: workers
+  become: yes
+  roles:
+    - worker

@@ -1,0 +1,11 @@
+---
+- name: Vérifier si déjà dans le cluster
+  stat:
+    path: /etc/kubernetes/kubelet.conf
+  register: kubelet_conf
+  tags: worker
+
+- name: Rejoindre le cluster
+  command: "{{ hostvars['k8s-master']['join_command'] }}"
+  when: not kubelet_conf.stat.exists
+  tags: worker
