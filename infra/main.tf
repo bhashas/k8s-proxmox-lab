@@ -74,6 +74,10 @@ resource "proxmox_virtual_environment_vm" "k8s_nodes" {
   started = true
   on_boot = true
 
+  timeouts {
+    create = "10m"
+  }
+
   vga {
     type = "serial0"
   }
