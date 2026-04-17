@@ -39,8 +39,9 @@ resource "proxmox_virtual_environment_vm" "k8s_nodes" {
   }
 
   cpu {
-    cores = 2
-  }
+  cores = 2
+  type  = "host"  # ← à ajouter absolument pour Ceph/Rook
+}
 
   memory {
     dedicated = 4096
