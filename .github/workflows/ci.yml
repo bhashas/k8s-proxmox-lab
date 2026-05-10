@@ -24,6 +24,11 @@ jobs:
 
       - name: Terraform Validate
         working-directory: ./infra
+        env:
+          TF_VAR_proxmox_api_url: "https://fake:8006"
+          TF_VAR_proxmox_token_id: "fake@pam!token"
+          TF_VAR_proxmox_token_secret: "fake-secret"
+          TF_VAR_ssh_public_key: "ssh-ed25519 AAAAC fake key"
         run: terraform validate
 
       - name: Checkov
