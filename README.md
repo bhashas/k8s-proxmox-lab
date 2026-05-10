@@ -66,3 +66,4 @@ kubectl get pods --all-namespaces
 - [ ] Argo CD — GitOps
 - [ ] Prometheus + Grafana — Monitoring
 - [ ] Longhorn — Stockage persistant distribué
+# Pipeline DevSecOps 2026
