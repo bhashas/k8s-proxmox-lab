@@ -2,6 +2,7 @@
 - name: Attendre fin de cloud-init
   command: cloud-init status --wait
   changed_when: false
+  failed_when: false
   tags: always
 
 - name: Mise à jour système

@@ -22,7 +22,7 @@ variable "network_bridge" {
 }
 variable "gateway" {
   type    = string
-  default = "192.168.192.1"
+  default = "192.168.192.5"
 }
 variable "storage" {
   type    = string

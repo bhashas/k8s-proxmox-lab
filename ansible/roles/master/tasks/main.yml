@@ -5,11 +5,12 @@
   register: k8s_init
   tags: master
 
-- name: Initialiser le cluster Kubernetes
+- name: Initialiser le cluster Kubernetes pour Cilium
   command: >
     kubeadm init
     --pod-network-cidr=10.244.0.0/16
     --apiserver-advertise-address=192.168.192.50
+    --skip-phases=addon/kube-proxy
   when: not k8s_init.stat.exists
   tags: master
 
@@ -31,9 +32,46 @@
     remote_src: yes
   tags: master
 
-- name: Installer Calico CNI
+- name: Installer Helm
+  shell: |
+    curl https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
+  args:
+    creates: /usr/local/bin/helm
+  tags: master
+
+- name: Ajouter repo Helm Cilium
   become_user: ubuntu
-  command: kubectl apply -f https://github.com/flannel-io/flannel/releases/latest/download/kube-flannel.yml
+  command: helm repo add cilium https://helm.cilium.io/
+  environment:
+    KUBECONFIG: /home/ubuntu/.kube/config
+  ignore_errors: yes
+  tags: master
+
+- name: Installer Cilium via Helm
+  become_user: ubuntu
+  command: >
+    helm upgrade --install cilium cilium/cilium
+    --version 1.15.5
+    --namespace kube-system
+    --set kubeProxyReplacement=true
+    --set k8sServiceHost=192.168.192.50
+    --set k8sServicePort=6443
+    --set hubble.relay.enabled=true
+    --set hubble.ui.enabled=true
+    --set gatewayAPI.enabled=true
+    --set l2announcements.enabled=true
+    --set externalIPs.enabled=true
+  environment:
+    KUBECONFIG: /home/ubuntu/.kube/config
+  tags: master
+
+- name: Attendre que Cilium soit Ready
+  become_user: ubuntu
+  command: >
+    kubectl wait --for=condition=Ready pod
+    -l app.kubernetes.io/name=cilium-agent
+    -n kube-system
+    --timeout=300s
   environment:
     KUBECONFIG: /home/ubuntu/.kube/config
   tags: master
@@ -45,46 +83,49 @@
     KUBECONFIG: /home/ubuntu/.kube/config
   tags: master
 
-- name: Installer NGINX Ingress Controller
+- name: Installer Gateway API CRDs
   become_user: ubuntu
-  command: kubectl apply -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/main/deploy/static/provider/cloud/deploy.yaml
+  command: kubectl apply -f https://github.com/kubernetes-sigs/gateway-api/releases/download/v1.1.0/standard-install.yaml
   environment:
     KUBECONFIG: /home/ubuntu/.kube/config
-  tags: ingress
+  ignore_errors: yes
+  tags: master
 
-- name: Attendre Ingress Controller Ready
+- name: Installer ArgoCD namespace
+  become_user: ubuntu
+  command: kubectl create namespace argocd --dry-run=client -o yaml
+  register: argocd_ns
+  environment:
+    KUBECONFIG: /home/ubuntu/.kube/config
+  ignore_errors: yes
+  tags: master
+
+- name: Appliquer namespace ArgoCD
+  become_user: ubuntu
+  shell: kubectl create namespace argocd --dry-run=client -o yaml | kubectl apply -f -
+  environment:
+    KUBECONFIG: /home/ubuntu/.kube/config
+  ignore_errors: yes
+  tags: master
+
+- name: Installer ArgoCD
   become_user: ubuntu
   command: >
-    kubectl wait --namespace ingress-nginx
-    --for=condition=ready pod
-    --selector=app.kubernetes.io/component=controller
-    --timeout=120s
+    kubectl apply -n argocd
+    --server-side
+    -f https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml
   environment:
     KUBECONFIG: /home/ubuntu/.kube/config
-  tags: ingress
+  ignore_errors: yes
+  tags: master
 
 - name: Générer la commande join
   command: kubeadm token create --print-join-command
   register: join_command_raw
   tags: master
 
-- name: Stocker join command comme fact global
+- name: Stocker join command comme fait global
   set_fact:
     join_command: "{{ join_command_raw.stdout }}"
     cacheable: yes
   tags: master
-
-- name: Copier les manifestes K8s
-  copy:
-    src: "{{ playbook_dir }}/k8s-manifests/"
-    dest: /home/ubuntu/k8s-manifests/
-    owner: ubuntu
-    group: ubuntu
-  tags: deploy
-
-- name: Déployer l'application
-  become_user: ubuntu
-  command: kubectl apply -f /home/ubuntu/k8s-manifests/
-  environment:
-    KUBECONFIG: /home/ubuntu/.kube/config
-  tags: deploy

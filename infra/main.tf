@@ -3,7 +3,7 @@ terraform {
   required_providers {
     proxmox = {
       source  = "bpg/proxmox"
-      version = "~> 0.50"
+      version = "~> 0.70"
     }
     local = {
       source  = "hashicorp/local"
@@ -20,9 +20,9 @@ provider "proxmox" {
 
 locals {
   nodes = {
-    "k8s-master"  = { id = 200, ip = "192.168.192.50" }
-    "k8s-worker1" = { id = 201, ip = "192.168.192.51" }
-    "k8s-worker2" = { id = 202, ip = "192.168.192.52" }
+    "k8s-master"  = { id = 200, ip = "192.168.192.50", role = "master" }
+    "k8s-worker1" = { id = 201, ip = "192.168.192.51", role = "worker" }
+    "k8s-worker2" = { id = 202, ip = "192.168.192.52", role = "worker" }
   }
 }
 
@@ -39,22 +39,50 @@ resource "proxmox_virtual_environment_vm" "k8s_nodes" {
   }
 
   cpu {
-  cores = 2
-}
-
-  memory {
-    dedicated = 4096
+    cores   = each.value.role == "master" ? 2 : 4
+    sockets = 1
+    type    = "host"
+    numa    = true
   }
 
+  memory {
+    dedicated = each.value.role == "master" ? 4096 : 8192
+  }
+
+  # Disque OS
   disk {
     datastore_id = "local-zfs"
-    size         = 25
+    size         = 40
     interface    = "scsi0"
+    discard      = "on"
+    iothread     = true
+    ssd          = true
+    cache        = "none"
+  }
+
+  # Disque dédié Rook-Ceph (workers uniquement)
+  dynamic "disk" {
+    for_each = each.value.role == "worker" ? [1] : []
+    content {
+      datastore_id = "local-zfs"
+      size         = 50
+      interface    = "scsi1"
+      discard      = "on"
+      iothread     = true
+      ssd          = true
+      cache        = "none"
+    }
   }
 
   network_device {
     bridge = "vmbr2"
     model  = "virtio"
+  }
+
+  agent {
+    enabled = true
+    trim    = true
+    timeout = "15m"
   }
 
   initialization {
@@ -71,16 +99,9 @@ resource "proxmox_virtual_environment_vm" "k8s_nodes" {
     }
   }
 
-  started = true
-  on_boot = true
+  started  = true
+  on_boot  = true
 
-  timeouts {
-    create = "10m"
-  }
-
-  vga {
-    type = "serial0"
-  }
 }
 
 resource "local_file" "ansible_inventory" {

@@ -1,0 +1,29 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: trivy-operator
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.io
+spec:
+  project: default
+  source:
+    repoURL: https://aquasecurity.github.io/helm-charts
+    chart: trivy-operator
+    targetRevision: "0.x"
+    helm:
+      values: |
+        trivy:
+          ignoreUnfixed: true
+        operator:
+          scanJobTimeout: 5m
+          vulnerabilityReportsPlugin: Trivy
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: security
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
