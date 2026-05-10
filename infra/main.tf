@@ -95,7 +95,7 @@ resource "proxmox_virtual_environment_vm" "k8s_nodes" {
     }
     user_account {
       username = "ubuntu"
-      keys     = [file("~/.ssh/id_ed25519.pub")]
+      keys = [var.ssh_public_key]
     }
   }
 
