@@ -22,3 +22,5 @@ spec:
       - CreateNamespace=true
       - ServerSideApply=true
 # updated
+# trigger
+# trigger

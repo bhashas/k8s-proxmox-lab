@@ -31,13 +31,13 @@ jobs:
 
       - name: Install ArgoCD CLI
         run: |
-          if ! command -v argocd &> /dev/null; then
+          if ! command -v ~/.local/bin/argocd &> /dev/null; then
             curl -sSL -o ~/argocd https://github.com/argoproj/argo-cd/releases/latest/download/argocd-linux-amd64
             chmod +x ~/argocd
             mkdir -p ~/.local/bin
             mv ~/argocd ~/.local/bin/argocd
-            echo "$HOME/.local/bin" >> $GITHUB_PATH
           fi
+          echo "$HOME/.local/bin" >> $GITHUB_PATH
 
       - name: Setup kubeconfig
         run: |
@@ -48,14 +48,25 @@ jobs:
       - name: Apply App of Apps
         run: kubectl apply -f k8s/base/app-of-apps.yaml
 
+      - name: Port-forward ArgoCD
+        run: |
+          kubectl port-forward svc/argocd-server -n argocd 8080:443 &
+          sleep 5
+
       - name: ArgoCD Login
         run: |
-          argocd login ${{ secrets.ARGOCD_SERVER }} \
+          argocd login localhost:8080 \
             --username admin \
             --password ${{ secrets.ARGOCD_PASSWORD }} \
             --insecure
 
       - name: ArgoCD Sync
         run: |
-          argocd app sync app-of-apps --async
-          argocd app wait app-of-apps --timeout 300
+          argocd app sync app-of-apps \
+            --server localhost:8080 \
+            --insecure \
+            --async
+          argocd app wait app-of-apps \
+            --server localhost:8080 \
+            --insecure \
+            --timeout 300
