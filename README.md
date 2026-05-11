@@ -11,13 +11,17 @@
 ---
 
 ## 🏗️ Architecture
+```
 Hetzner Dedicated Server (64Go RAM / 2x500Go ZFS)
 └── Proxmox VE 8.x
 ├── VM k8s-master    (192.168.192.50) — Control Plane
 ├── VM k8s-worker1   (192.168.192.51) — Worker + Ceph OSD
 └── VM k8s-worker2   (192.168.192.52) — Worker + Ceph OSD
+```
 ### Pipeline GitOps
+```
 git push
+
 ↓
 GitHub Actions (self-hosted runner)
 ↓
@@ -30,6 +34,7 @@ ansible.yml → K8s + Cilium + ArgoCD (si ansible/** modifié)
 gitops.yml → ArgoCD sync (si k8s/** modifié)
 ↓
 ✅ Apps déployées automatiquement
+```
 
 ---
 
@@ -130,6 +135,7 @@ kubectl get pods -A
 ---
 
 ## 📁 Structure du projet
+```
 k8s-proxmox-lab/
 ├── .github/workflows/
 │   ├── ci.yml           # Lint + Validate (tout push)
@@ -156,6 +162,7 @@ k8s-proxmox-lab/
 ├── storage/
 ├── backup/
 └── ingress/
+```
 
 ---
 
