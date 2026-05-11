@@ -1,44 +1,19 @@
-name: DevSecOps Pipeline
+name: Terraform
 
 on:
   push:
     branches: [main]
+    paths:
+      - 'infra/**'
   pull_request:
     branches: [main]
-
-env:
-  TF_VERSION: "1.7.0"
-  ANSIBLE_HOST_KEY_CHECKING: "False"
+    paths:
+      - 'infra/**'
 
 jobs:
-
-  security-scan:
-    name: Security Scan
-    runs-on: self-hosted
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Checkov IaC Scan
-        uses: bridgecrewio/checkov-action@master
-        with:
-          directory: infra/
-          framework: terraform
-          soft_fail: true
-
-      - name: Trivy filesystem scan
-        uses: aquasecurity/trivy-action@master
-        with:
-          scan-type: fs
-          scan-ref: .
-          severity: CRITICAL,HIGH
-          exit-code: 0
-
   terraform:
-    name: Terraform
+    name: Terraform Plan & Apply
     runs-on: self-hosted
-    needs: security-scan
-    if: github.ref == 'refs/heads/main'
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -46,7 +21,7 @@ jobs:
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
         with:
-          terraform_version: ${{ env.TF_VERSION }}
+          terraform_version: "1.7.0"
 
       - name: Terraform Init
         working-directory: infra/
@@ -76,6 +51,7 @@ jobs:
         run: terraform plan -out=tfplan
 
       - name: Terraform Apply
+        if: github.ref == 'refs/heads/main'
         working-directory: infra/
         env:
           TF_VAR_proxmox_api_url: ${{ secrets.PROXMOX_API_URL }}
@@ -84,18 +60,20 @@ jobs:
           TF_VAR_ssh_public_key: ${{ secrets.SSH_PUBLIC_KEY }}
         run: terraform apply -auto-approve tfplan
 
-  ansible:
-    name: Ansible Bootstrap
-    runs-on: self-hosted
-    needs: terraform
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - name: Save Terraform outputs
+        if: github.ref == 'refs/heads/main'
+        working-directory: infra/
+        env:
+          TF_VAR_proxmox_api_url: ${{ secrets.PROXMOX_API_URL }}
+          TF_VAR_proxmox_token_id: ${{ secrets.PROXMOX_TOKEN_ID }}
+          TF_VAR_proxmox_token_secret: ${{ secrets.PROXMOX_TOKEN_SECRET }}
+          TF_VAR_ssh_public_key: ${{ secrets.SSH_PUBLIC_KEY }}
+        run: terraform output -json > terraform-outputs.json
 
-      - name: Setup SSH Key
-        run: |
-          mkdir -p ~/.ssh
-          echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_ed25519
-          chmod 600 ~/.ssh/id_ed25519
-          ssh-keyscan -H ${{ secrets.K8S_MASTER_IP }} >> ~/.ssh/known_hosts
-          ssh-keyscan -H ${{ secrets.K8S_
+      - name: Upload Terraform outputs
+        if: github.ref == 'refs/heads/main'
+        uses: actions/upload-artifact@v4
+        with:
+          name: terraform-outputs
+          path: infra/terraform-outputs.json
+          retention-days: 1

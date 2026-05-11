@@ -1,0 +1,59 @@
+name: GitOps
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'k8s/**'
+  workflow_run:
+    workflows: ["Ansible"]
+    types:
+      - completed
+    branches: [main]
+
+jobs:
+  argocd-sync:
+    name: ArgoCD Sync
+    runs-on: self-hosted
+    if: >
+      github.event_name == 'push' ||
+      github.event.workflow_run.conclusion == 'success'
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup SSH Key
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          ssh-keyscan -H ${{ secrets.K8S_MASTER_IP }} >> ~/.ssh/known_hosts
+
+      - name: Install ArgoCD CLI
+        run: |
+          if ! command -v argocd &> /dev/null; then
+            curl -sSL -o argocd https://github.com/argoproj/argo-cd/releases/latest/download/argocd-linux-amd64
+            chmod +x argocd
+            sudo mv argocd /usr/local/bin/
+          fi
+
+      - name: Setup kubeconfig
+        run: |
+          mkdir -p ~/.kube
+          ssh ubuntu@${{ secrets.K8S_MASTER_IP }} "cat ~/.kube/config" > ~/.kube/config
+          chmod 600 ~/.kube/config
+
+      - name: Apply App of Apps
+        run: kubectl apply -f k8s/base/app-of-apps.yaml
+
+      - name: ArgoCD Login
+        run: |
+          argocd login ${{ secrets.ARGOCD_SERVER }} \
+            --username admin \
+            --password ${{ secrets.ARGOCD_PASSWORD }} \
+            --insecure
+
+      - name: ArgoCD Sync
+        run: |
+          argocd app sync app-of-apps --async
+          argocd app wait app-of-apps --timeout 300
