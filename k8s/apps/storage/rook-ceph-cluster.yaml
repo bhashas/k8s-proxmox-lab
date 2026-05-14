@@ -16,7 +16,7 @@ spec:
         operatorNamespace: rook-ceph
         clusterSpec:
           mon:
-            count: 3
+            count: 1
             allowMultiplePerNode: false
           mgr:
             count: 1
