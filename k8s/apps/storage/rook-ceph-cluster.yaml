@@ -1,5 +1,4 @@
-python3 - << 'PYEOF'
-content = """apiVersion: argoproj.io/v1alpha1
+apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
   name: rook-ceph-cluster
@@ -18,7 +17,7 @@ spec:
         cephClusterSpec:
           mon:
             count: 1
-            allowMultiplePerNode: false
+            allowMultiplePerNode: true
           mgr:
             count: 1
           dashboard:
@@ -57,8 +56,3 @@ spec:
     syncOptions:
       - CreateNamespace=true
       - ServerSideApply=true
-"""
-with open('/home/mila/k8s-proxmox-lab/k8s/apps/storage/rook-ceph-cluster.yaml', 'w') as f:
-    f.write(content)
-print("OK")
-PYEOF
