@@ -22,6 +22,27 @@ spec:
             count: 1
           dashboard:
             enabled: true
+          resources:
+            mgr:
+              requests:
+                cpu: 100m
+                memory: 256Mi
+            mon:
+              requests:
+                cpu: 100m
+                memory: 256Mi
+            osd:
+              requests:
+                cpu: 100m
+                memory: 512Mi
+            prepareosd:
+              requests:
+                cpu: 100m
+                memory: 50Mi
+            crashcollector:
+              requests:
+                cpu: 10m
+                memory: 60Mi
           storage:
             useAllNodes: false
             useAllDevices: false
