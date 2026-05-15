@@ -60,7 +60,7 @@ spec:
               replicated:
                 size: 2
             storageClass:
-              enabled: true
+              enabled: false
               name: rook-ceph-block
               isDefault: true
               reclaimPolicy: Delete
