@@ -1,0 +1,44 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: keycloak
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.io
+spec:
+  project: default
+  source:
+    repoURL: https://charts.bitnami.com/bitnami
+    chart: keycloak
+    targetRevision: 21.4.4
+    helm:
+      values: |
+        auth:
+          adminUser: admin
+          existingSecret: keycloak-admin-secret
+          passwordSecretKey: admin-password
+        postgresql:
+          enabled: true
+          auth:
+            existingSecret: keycloak-db-secret
+            secretKeys:
+              adminPasswordKey: postgres-password
+              userPasswordKey: password
+        resources:
+          requests:
+            cpu: 100m
+            memory: 512Mi
+        persistence:
+          enabled: true
+          storageClass: rook-ceph-block
+          size: 2Gi
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: auth
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true
