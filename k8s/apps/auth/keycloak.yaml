@@ -14,7 +14,9 @@ spec:
     helm:
       values: |
         image:
-          tag: 25.0.6-debian-12-r0
+          registry: quay.io
+          repository: keycloak/keycloak
+          tag: 24.0.3
         auth:
           adminUser: admin
           existingSecret: keycloak-admin-secret
