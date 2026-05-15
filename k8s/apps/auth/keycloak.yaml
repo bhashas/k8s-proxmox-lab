@@ -10,9 +10,11 @@ spec:
   source:
     repoURL: https://charts.bitnami.com/bitnami
     chart: keycloak
-    targetRevision: 24.4.4
+    targetRevision: 22.1.0
     helm:
       values: |
+        image:
+          tag: 25.0.6-debian-12-r0
         auth:
           adminUser: admin
           existingSecret: keycloak-admin-secret
