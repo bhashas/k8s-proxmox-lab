@@ -10,7 +10,7 @@ spec:
   source:
     repoURL: https://charts.bitnami.com/bitnami
     chart: keycloak
-    targetRevision: 21.4.4
+    targetRevision: 24.4.4
     helm:
       values: |
         auth:
